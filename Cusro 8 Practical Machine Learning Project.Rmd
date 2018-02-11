@@ -1,0 +1,121 @@
+---
+title: "Practical Machine Learning Project"
+author: "Carlos Castro"
+date: "10th february 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Data
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+## The Goal
+
+The goal of this project is to predict the manner in which people do the exercise using some machine learning algorithms studied. For this, any model will use the classe as variable outcome, and the meaning of 5 leveles that have the variable are:
+
+
+* exactly according to the specification (Class A)
+* throwing the elbows to the front (Class B)
+* lifting the dumbbell only halfway (Class C)
+* lowering the dumbbell only halfway (Class D)
+* throwing the hips to the front (Class E)
+
+# Approach
+
+The steps to develop this project are explained below:
+        
+## Load the packages and data for the project 
+
+```{r, echo= FALSE, include=TRUE}
+#Load packages
+set.seed(12345)
+library(caret)
+library(rpart)
+library(rattle)
+library(randomForest)
+#Read and clean data
+training <- read.csv("./data1/pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+testing <- read.csv("./data1/pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+```
+
+## Data analysis and final data (training and testing)
+
+The training set has 19622 observations and 160 variables. Some of the variables have NAs, so the first step was to delete all the columns with missing values. The next step was delete of the initial data the columns 1 to 7, because this variables are inconvenient for our project. This procedure was made to training and testing sets of data, and a validation of columns names beetween both set also was made.
+
+```{r, echo=TRUE, include=TRUE}
+# Delete columns with all missing values
+training1<-training[,colSums(is.na(training)) == 0]
+testing1<-testing[,colSums(is.na(testing)) == 0]
+# Delete variables that are irrelevant to our current project:
+# user_name, raw_timestamp_part_1, raw_timestamp_part_,2 cvtd_timestamp, new_window, and  num_window 
+# (columns 1 to 7). 
+trainingfinal   <-training1[,-c(1:7)]
+testingfinal <-testing1[,-c(1:7)]
+# Validation between training and testing data
+all.equal(colnames(trainingfinal)[1:length(colnames(trainingfinal))-1], colnames(testingfinal)[1:length(colnames(testingfinal))-1])
+dim(trainingfinal)
+```
+With this procedure, the final training set have 19622 observations and 53 variables
+
+## Data Slicing (Cross validation)
+The data obtained in the above step is divided in training set (75% of the data) and testing set(the 25% of remaining data). The machine learning algorimths are trainning with the first data set and tested with the second one. The model that exibith a bigger accuracy is chose in order to preedict de original testing set (with the name testingfinal) 
+
+```{r, echo=TRUE, include=TRUE}
+# Partition the data so that 75% of the training dataset into training and the remaining 25% to testing
+inTrain <- createDataPartition(y=trainingfinal$classe, p=0.75, list=FALSE)
+trainingset <- trainingfinal[inTrain,] 
+testingset <- trainingfinal[-inTrain,]
+dim(trainingset)
+dim(testingset)
+```
+
+## ML Model 1: Decision Tree
+```{r, echo=TRUE, include=TRUE}
+# Prediction with Decision Tree Machine Learning Algorithm
+dtmodel<- rpart(classe ~ ., data=trainingset, method="class")
+#Plot the Prediction Tree
+fancyRpartPlot(dtmodel)
+# Predictions with Decision Tree
+predictionsdt <- predict(dtmodel, testingset, type = "class")
+# Evaluate Decision Tree Model Accuracy
+confusionMatrix(predictionsdt, testingset$classe)
+```
+
+## ML Model 2: Random Forest
+```{r, echo=TRUE, include=TRUE}
+# Prediction with Random Forest Machine Learning Algorithm
+rfmodel<- randomForest(classe ~ ., data=trainingset)
+# Predictions with Random Forest
+predictionsrf <- predict(rfmodel, testingset, type = "class")
+#Evaluate Random Forest Model Accuracy
+confusionMatrix(predictionsrf, testingset$classe)
+```
+Acording with the accuracy, the Random Forest Algorithm shows a 0.9955 accuracy and the Decision Tree Algorithm has an accuracry of 0.7196. So the Random Forest Algorithm is choseen make the predictions of the final testing sample (the accuracy of each model is showed in the confusion Matrix)
+
+## Final Predictions and Expected Out-of-Sample Error
+The final outcome based on the Random Forest Algorithm, applied to the Final Testing dataset is showed above. For this data, the expected out-of-sample error is estimated at 0.005, or 0.5%, which is obtained from the Confusion Matrix
+
+```{r, echo=TRUE, include=TRUE}
+# predict outcome levels on the original Testing data set using Random Forest algorithm
+predictionfinal <- predict(rfmodel, testingfinal, type="class")
+predictionfinal
+```
+
+
+
+.
